@@ -827,7 +827,3 @@ class BooleanFunctionSystem:
             print(f"- {', '.join(subset)}")
 
         return results, best_subsets
-
-if __name__ == "__main__":
-    system = BooleanFunctionSystem.from_console_text()
-    system.pretty_print()
