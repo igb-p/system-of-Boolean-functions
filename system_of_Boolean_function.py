@@ -458,7 +458,6 @@ class BooleanFunctionSystem:
             probability = success_cases / total_cases
             results[B_i_vars] = probability
         
-            # Сохраняем исходный вывод
             print(f"Подмножество {B_i_vars}: "
                   f"успешных случаев = {success_cases}/{total_cases}, "
                   f"вероятность = {probability:.4f}")
