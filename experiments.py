@@ -1,10 +1,7 @@
 from system_of_Boolean_function2 import BooleanFunctionSystem
-import random
-import copy
 from itertools import combinations, product
 import time
 import matplotlib.pyplot as plt
-import numpy as np
 
 # эксперимент 4 (рисунок 4) - зависимость времени работы алгортимов 1 и 2 от изменения мощности множеств k(сравнени времени работы оптимизированного и базового алгоритма)
 def run_optimization_comparison_experiment():
