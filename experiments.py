@@ -82,8 +82,6 @@ def run_optimization_comparison_experiment():
     
     plt.legend(fontsize=13, loc='upper left', framealpha=0.9)
     
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
-    
     plt.tight_layout()
     plt.savefig('optimization_time_comparison.png', dpi=300)
     plt.show()
@@ -95,7 +93,7 @@ def run_speed_experiment():
     num_vars = 12
     num_functions = 6
     max_terms = 10
-    num_systems = 20
+    num_systems = 1
     ks = range(2, 11)
     
     results = {
@@ -164,8 +162,6 @@ def run_speed_experiment():
     
     plt.legend(fontsize=13, loc='upper left', framealpha=0.9)
     
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
-    
     plt.tight_layout()
     plt.savefig('time_comparison.png', dpi=300)
     plt.show()
@@ -192,7 +188,7 @@ def run_accuracy_experiment():
     num_vars = 12
     num_functions = 5
     max_terms = 10
-    num_systems = 20
+    num_systems = 1
     ks = range(2, 11)
     
     results = {
@@ -213,9 +209,9 @@ def run_accuracy_experiment():
             basic_results, _ = system.calculate_linearization_probability(k)
             refined_results, _ = system.calculate_refined_probability(k, max_iter=3)
             
-            brute_max_prob = max(brute_results.values()) if brute_results else 0
-            basic_max_prob = max(basic_results.values()) if basic_results else 0
-            refined_max_prob = max(refined_results.values()) if refined_results else 0
+            brute_max_prob = max(brute_results.values())
+            basic_max_prob = max(basic_results.values())
+            refined_max_prob = max(refined_results.values())
             
             max_prob_diff_basic = brute_max_prob - basic_max_prob
             max_prob_diff_refined = brute_max_prob - refined_max_prob
@@ -270,8 +266,6 @@ def run_accuracy_experiment():
     
     plt.legend(fontsize=13, loc='upper right', framealpha=0.9)
     
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
-    
     plt.tight_layout()
     plt.savefig('accuracy_max_prob_diff.png', dpi=300)
     plt.show()
@@ -292,13 +286,13 @@ def run_accuracy_experiment():
     
     return avg_results
 
-# эксперимент 2 (рисунок 2) -  хависимость времени работы алгортима полного перебора, алгоритма 1 , алгортима 1 с уточнениями от числа переменныъ n
+# эксперимент 2 (рисунок 2) -  зависимость времени работы алгортима полного перебора, алгоритма 1 , алгортима 1 с уточнениями от числа переменных n
 def run_scalability_experiment():
     fixed_k = 5 
     n_values = range(7, 15, 1)
     num_functions = 10
     max_terms = 5
-    num_systems = 5 
+    num_systems = 1 
     
     results = {
         'time': {
@@ -359,8 +353,6 @@ def run_scalability_experiment():
 
     plt.legend(fontsize=13, loc='upper left', framealpha=0.9)
     
-
-    plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
     
     plt.tight_layout()
     plt.savefig(f'scalability_k{fixed_k}.png', dpi=300)
@@ -384,7 +376,7 @@ def run_scalability_experiment():
     
     return results
 
-# эксперимент для определения зависимости мощности множетсва EX и величниы EX/ALL от мощности множеств k
+# эксперимент (рисунки 5 и 6) для определения зависимости мощности множетсва EX и величниы EX/ALL от мощности множеств k
 def run_random_system_analysis():
     
     num_vars = 20
@@ -449,7 +441,7 @@ def run_random_system_analysis():
         avg_times['basic_optimized'].append(avg_optimized)
         
         avg_excluded = sum(excluded_sets_data[k]) / num_systems
-        excluded_ratio = avg_excluded / total_sets_counts[k] if total_sets_counts[k] > 0 else 0
+        excluded_ratio = avg_excluded / total_sets_counts[k]
         excluded_final[k] = {
             'avg_excluded_count': avg_excluded,
             'avg_ratio': excluded_ratio,
@@ -516,4 +508,4 @@ def run_random_system_analysis():
     }
 
 if __name__ == "__main__":
-   run_scalability_experiment()
+   run_accuracy_experiment()
