@@ -67,7 +67,6 @@ class BooleanFunctionSystem:
         available_vars = list(range(1, self.num_vars + 1))
         chosen_vars = random.sample(available_vars, num_vars_in_monomial)
     
-        # Собираем моном
         monomial = 1
         for var in chosen_vars:
             monomial |= (1 << var)
@@ -198,6 +197,7 @@ class BooleanFunctionSystem:
         system.functions = functions
         return system
 
+    # Задание системы через список функций
     @staticmethod
     def from_functions(functions, num_vars=None):
         if not functions:
@@ -263,7 +263,7 @@ class BooleanFunctionSystem:
     def _print_coverage_matrix(self, variables, monomials, matrix):
         print("\nПокрываемая матрица:")
     
-        # Заголовок столбцов
+        # Заголовки столбцов
         header = " " * 20
         for var in variables:
             header += f"{var:>6}"
@@ -277,16 +277,16 @@ class BooleanFunctionSystem:
             print(f"{monom_str:<15} | {row_str}")
 
     # Реализация алгоритма поиска LP-множеств мощности k с наибольшей нижней границей (алгоритм 1)
-    def calculate_linearization_probability(self, n):
-        if n <= 0 or n > self.num_vars - 2:
-            raise ValueError(f"Размер подмножеств должен быть 1 <= n <= {self.num_vars-2}")
+    def calculate_linearization_probability(self, k):
+        if k <= 0 or k > self.num_vars - 2:
+            raise ValueError(f"Размер подмножеств должен быть 1 <= k <= {self.num_vars-2}")
     
         X = set(range(1, self.num_vars + 1))
         p = {}
     
         # Генерируем все подмножества заранее
         
-        for B_i in combinations(X, n):
+        for B_i in combinations(X, k):
             B_i_vars = tuple(f'x{var}' for var in B_i)
             
             # Создаем маску для переменных из B_i
@@ -308,7 +308,7 @@ class BooleanFunctionSystem:
                     num_external = calculate_weight(external_vars_mask)
                     
                     if num_external > 1:
-                        # Если есть более одной внешней переменной
+                        # Если есть более одной переменной из X\B_i
                         # Проверяем, есть ли хоть одна переменная из B_i в мономе
                         if (monom_vars & b_mask) == 0:
                             has_invalid_monomial = True
@@ -333,15 +333,15 @@ class BooleanFunctionSystem:
                 #self._print_coverage_matrix(B_i_vars, excluded_monomials, matrix)
                 
                 # Расчет вероятности
-                k, cv = self._find_greedy_cover(matrix, B_i_vars)
-                prob = 1.0 / (2 ** k)
+                l, cv = self._find_greedy_cover(matrix, B_i_vars)
+                prob = 1.0 / (1 << l)
                 print(f"Покрывающее множество: {cv}")
                 p[B_i_vars] = prob
         
         # Вывод результатов
         sets = []
         print("\nИТОГОВЫЕ ВЕРОЯТНОСТИ:")
-        max_prob = max(p.values()) if p else 0
+        max_prob = max(p.values())
         for vars, prob in sorted(p.items(), key=lambda x: (-x[1], x[0])):
             star = " *" if prob == max_prob else ""
             if prob == max_prob: 
@@ -384,7 +384,7 @@ class BooleanFunctionSystem:
                         max_cover = cover_count
                         best_col = col
         
-            # Если не нашли столбец или он ничего не покрывает
+            # Если столбцы ничего не покрывают
             if best_col is None or max_cover == 0:
                 break
             
@@ -429,20 +429,23 @@ class BooleanFunctionSystem:
 
     # алгортим полного перебора (алгоритм 3)
     def brute_force_linearization_check(self, subset_size):
+
+        if subset_size <= 0 or subset_size > self.num_vars - 2:
+            raise ValueError(f"Размер подмножеств должен быть 1 <= subset_size <= {self.num_vars-2}")
     
         X = list(range(1, self.num_vars + 1))
         results = {}
 
-        # Предварительно создаем все возможные комбинации значений
+        # Предварительно создаем все возможные вектора значений
         all_value_combinations = list(product([0, 1], repeat=subset_size))
+        total_cases = 1 << subset_size
     
         for B_i in combinations(X, subset_size):
             B_i_list = list(B_i)
             B_i_vars = tuple(f'x{var}' for var in B_i_list)
-            total_cases = 1 << subset_size
             success_cases = 0
         
-            # Используем предсозданные комбинации значений
+            # Используем предсозданные вектора значений
             for values in all_value_combinations:
                 temp_system = self.copy()
             
@@ -463,7 +466,7 @@ class BooleanFunctionSystem:
                   f"вероятность = {probability:.4f}")
     
         # Находим подмножества с максимальной вероятностью
-        max_prob = max(results.values()) if results else 0
+        max_prob = max(results.values())
         best_subsets = [vars for vars, prob in results.items() if prob == max_prob]
     
         print("\nРезультаты:")
@@ -472,16 +475,16 @@ class BooleanFunctionSystem:
     
         return results, best_subsets
 
-    # Оптимизация алгоритма поиска LP-множеств мощности k с наибольшей нижней границей
-    def calculate_linearization_probability_optimized(self, n):
-        if n <= 0 or n > self.num_vars - 2:
-            raise ValueError(f"Размер подмножеств должен быть 1 <= n <= {self.num_vars-2}")
+    # Оптимизация алгоритма поиска LP-множеств мощности k с наибольшей нижней границей (алгоритм 2)
+    def calculate_linearization_probability_optimized(self, k):
+        if k <= 0 or k > self.num_vars - 2:
+            raise ValueError(f"Размер подмножеств должен быть 1 <= k <= {self.num_vars-2}")
     
         X = set(range(1, self.num_vars + 1))
         p = {}
     
         excluded_sets = set()
-        max_degree_for_filter = self.num_vars - n
+        max_degree_for_filter = self.num_vars - k
     
         # Предварительный обход системы
         for func in self.functions:
@@ -496,11 +499,11 @@ class BooleanFunctionSystem:
                             monom_vars_set.add(i)
                 
                     # Все множества, не содержащие переменных монома, дают p=0
-                    for bad_B_i in combinations(X - monom_vars_set, n):
+                    for bad_B_i in combinations(X - monom_vars_set, k):
                         excluded_sets.add(tuple(bad_B_i))
     
         # Множества для анализа
-        all_sets = set(combinations(X, n))
+        all_sets = set(combinations(X, k))
         potential_sets = all_sets - excluded_sets
     
         print(f"Всего множеств: {len(all_sets)}, исключено: {len(excluded_sets)}, осталось: {len(potential_sets)}")
@@ -514,16 +517,18 @@ class BooleanFunctionSystem:
             
             excluded_monomials = set()
             
-            # Поиск покрываемых мономов (после фильтрации все мономы имеют хотя бы одну переменную из B_i)
+            # Поиск покрываемых мономов (все мономы из неисключенных имеют хотя бы одну переменную из B_i)
             for func in self.functions:
                 for monom in func:
                     monom_vars = monom & ~1
                     
                     # Проверяем, сколько переменных монома не входит в B_i
                     external_vars_mask = monom_vars & ~b_mask
+
+                    # Считаем количество таких переменных (X\B_i)
                     num_external = calculate_weight(external_vars_mask)
                     
-                    # Если есть более одной внешней переменной, моном требует покрытия
+                    # Если есть более одной такой переменной, моном требует покрытия
                     if num_external > 1: 
                         excluded_monomials.add(monom)
     
@@ -540,8 +545,8 @@ class BooleanFunctionSystem:
                 #self._print_coverage_matrix(B_i_vars, excluded_monomials, matrix)
         
                 # Расчет вероятности
-                k, cv = self._find_greedy_cover(matrix, B_i_vars)
-                prob = 1.0 / (2 ** k) if k > 0 else 0.0
+                l, cv = self._find_greedy_cover(matrix, B_i_vars)
+                prob = 1.0 / (1 << l) if k > 0 else 0.0
                 print(f"Покрывающее множество: {cv}")
                 p[B_i_vars] = prob
 
@@ -552,7 +557,7 @@ class BooleanFunctionSystem:
 
         sets = []
         print("\nИТОГОВЫЕ ВЕРОЯТНОСТИ:")
-        max_prob = max(p.values()) if p else 0
+        max_prob = max(p.values())
         for vars, prob in sorted(p.items(), key=lambda x: (-x[1], x[0])):
             star = " *" if prob == max_prob else ""
             if prob == max_prob: 
@@ -562,20 +567,22 @@ class BooleanFunctionSystem:
         return p, sets, len(excluded_sets)
 
     # Алгоритм поиска LP-множеств мощности k с наибольшей нижней границей с уточнениями
-    def calculate_refined_probability(self, n, max_iter=3):
+    def calculate_refined_probability(self, k, max_iter=3):
+        if k <= 0 or k > self.num_vars - 2:
+            raise ValueError(f"Размер подмножеств должен быть 1 <= k <= {self.num_vars-2}")
+
         X = set(range(1, self.num_vars + 1))
         results = {}
         global_max_prob = 0.0
         best_subsets = []
 
-        for B_i in combinations(X, n):
+        for B_i in combinations(X, k):
             B_i_vars = tuple(f'x{var}' for var in B_i)
             print(f"\n\n{'='*60}\nАнализ множества: {', '.join(B_i_vars)}\n{'='*60}")
             b_mask = 1
             for var in B_i:
                 b_mask |= (1 << var)
             
-            # Проверка на недопустимые мономы
             has_invalid_monomial = False
             for func in self.functions:
                 for monom in func:
@@ -603,7 +610,7 @@ class BooleanFunctionSystem:
             used_vars_mask = 1  # Маска для использованных переменных
 
             for iteration in range(max_iter):
-                # Сбор и упрощение мономов с использованием масок
+
                 current_monomials = set()
                 for func in func_copy:
                     simplified_func = set()
@@ -614,16 +621,16 @@ class BooleanFunctionSystem:
                             simplified_func.add(simplified_monom)
                     current_monomials.update(simplified_func)
 
-                # Поиск проблемных мономов для текущей итерации
+                # Поиск покрываемых мономов для текущей итерации
                 excluded_monomials = set()
                 for monom in current_monomials:
                     monom_vars = monom & ~1
                     
-                    # Проверяем, сколько переменных из X\B_i
-                    # Создаем маску для активных переменных B_i
+                    # Проверяем число переменных из X\B_i
+                    # Создаем маску для неиспользованных переменных из B_i
                     active_b_mask = b_mask & ~used_vars_mask
                     
-                    # Переменные монома, которые не входят в активные переменные B_i
+                    # Переменные монома, не входящие в X/B_i' (B_i' - неиспользованные переменные из B_i)
                     external_vars_mask = monom_vars & ~active_b_mask
                     num_external = calculate_weight(external_vars_mask)
                     
@@ -654,8 +661,8 @@ class BooleanFunctionSystem:
                 #self._print_coverage_matrix(active_vars, excluded_monomials, matrix)
 
                 # Поиск покрытия
-                k, cover_vars = self._find_greedy_cover(matrix, active_vars)
-                if k == 0:
+                l, cover_vars = self._find_greedy_cover(matrix, active_vars)
+                if l == 0:
                     print("Не удалось найти покрытие - завершение итераций")
                     break
 
@@ -665,12 +672,12 @@ class BooleanFunctionSystem:
                     var_idx = int(var_str[1:])
                     used_vars_mask |= (1 << var_idx)
                 
-                current_k = len(used_vars)
-                prob_increment = 1.0 / (2 ** current_k)
+                current_l = len(used_vars)
+                prob_increment = 1.0 / (1 << current_l)
                 total_prob += prob_increment
 
-                print(f"\nНайдено покрытие: {cover_vars} (k={k})")
-                print(f"Добавлена вероятность: 1/2^{current_k} = {prob_increment:.6f}")
+                print(f"\nНайдено покрытие: {cover_vars} (l={l})")
+                print(f"Добавлена вероятность: 1/2^{current_l} = {prob_increment:.6f}")
                 print(f"Текущая суммарная вероятность: {total_prob:.6f}")
 
             results[B_i_vars] = total_prob
@@ -693,14 +700,18 @@ class BooleanFunctionSystem:
         return results, best_subsets
     
     # Оптимизированный алгоритм поиска LP-множеств мощности k с наибольшей нижней границей с уточнениями
-    def calculate_refined_probability_optimized(self, n, max_iter=3):
+    def calculate_refined_probability_optimized(self, k, max_iter=3):
+
+        if k <= 0 or k > self.num_vars - 2:
+           raise ValueError(f"Размер подмножеств должен быть 1 <= k <= {self.num_vars-2}")
+
         X = set(range(1, self.num_vars + 1))
         results = {}
         global_max_prob = 0.0
         best_subsets = []
     
         excluded_sets = set()
-        max_degree_for_filter = self.num_vars - n
+        max_degree_for_filter = self.num_vars - k
     
         # Предварительный обход системы
         for func in self.functions:
@@ -714,11 +725,11 @@ class BooleanFunctionSystem:
                             monom_vars_set.add(i)
                     
                     # Все множества, не содержащие переменных монома, дают p=0
-                    for bad_B_i in combinations(X - monom_vars_set, n):
+                    for bad_B_i in combinations(X - monom_vars_set, k):
                         excluded_sets.add(tuple(sorted(bad_B_i)))
     
         # Множества для анализа
-        all_sets = set(combinations(X, n))
+        all_sets = set(combinations(X, k))
         potential_sets = all_sets - excluded_sets
     
         print(f"Всего множеств: {len(all_sets)}, исключено: {len(excluded_sets)}, осталось: {len(potential_sets)}")
@@ -737,7 +748,6 @@ class BooleanFunctionSystem:
             used_vars_mask = 0
 
             for iteration in range(max_iter):
-                # Сбор и упрощение мономов
                 current_monomials = set()
                 for func in func_copy:
                     simplified_func = set()
@@ -756,7 +766,7 @@ class BooleanFunctionSystem:
                     external_vars_mask = monom_vars & ~active_b_mask
                     num_external = calculate_weight(external_vars_mask)
                     
-                    # После предфильтрации все мономы гарантированно имеют хотя бы одну переменную из B_i
+                    # После предварительного обхода все мономы гарантированно имеют хотя бы одну переменную из B_i
                     if num_external > 1:
                         excluded_monomials.add(monom)
 
@@ -784,8 +794,8 @@ class BooleanFunctionSystem:
                 #self._print_coverage_matrix(active_vars, excluded_monomials, matrix)
 
                 # Поиск покрытия
-                k, cover_vars = self._find_greedy_cover(matrix, active_vars)
-                if k == 0:
+                l, cover_vars = self._find_greedy_cover(matrix, active_vars)
+                if l == 0:
                     print("Не удалось найти покрытие - завершение итераций")
                     break
 
@@ -795,12 +805,12 @@ class BooleanFunctionSystem:
                     var_idx = int(var_str[1:])
                     used_vars_mask |= (1 << var_idx)
                 
-                current_k = len(used_vars)
-                prob_increment = 1.0 / (2 ** current_k)
+                current_l = len(used_vars)
+                prob_increment = 1.0 / (1 << current_l)
                 total_prob += prob_increment
 
-                print(f"\nНайдено покрытие: {cover_vars} (k={k})")
-                print(f"Добавлена вероятность: 1/2^{current_k} = {prob_increment:.6f}")
+                print(f"\nНайдено покрытие: {cover_vars} (l={l})")
+                print(f"Добавлена вероятность: 1/2^{current_l} = {prob_increment:.6f}")
                 print(f"Текущая суммарная вероятность: {total_prob:.6f}")
 
             results[B_i_vars] = total_prob
